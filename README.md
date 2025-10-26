@@ -107,3 +107,7 @@ https://github.com/ztor2/network_datasets
 - Kipf & Welling. (2017). Semi-supervised classification with graph convolutional networks. ICLR 2017.<br>
 
 
+### 개발 환경 설정 (uv 사용)
+- 프로젝트 루트에서 [uv](https://github.com/astral-sh/uv)를 설치한 뒤 `uv sync` 명령으로 필수 의존성을 설치한다.
+- DeepWalk 및 노트북 베이스라인까지 실행하려면 `uv sync --all-extras` 또는 필요한 추가 그룹(`baseline`, `notebook`)을 선택해 설치한다.
+- 준비가 끝나면 `uv run run-gae --help` 와 같이 정의된 스크립트를 통해 각 실험을 실행할 수 있다. 예) `uv run run-gcn --dataset cora --epochs 200` (또는 `uv run python -m simplified_graph_diffusion.scripts.run_gcn --dataset cora --epochs 200`).

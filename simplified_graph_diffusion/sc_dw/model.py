@@ -3,7 +3,11 @@ from sc_dw.utils import *
 import numpy as np
 import time
 from sklearn.manifold import spectral_embedding
-from node2vec import Node2Vec
+
+try:
+    from node2vec import Node2Vec
+except ImportError:
+    Node2Vec = None
 
 def spectral_clustering_scores(train_test_split, random_state=0, dim=16):
     adj_train, train_edges, train_edges_false, val_edges, val_edges_false, \
@@ -32,6 +36,8 @@ def spectral_clustering_scores(train_test_split, random_state=0, dim=16):
     return sc_scores
 
 def deepwalk_scores(train_test_split, dim=16, walk_len=80, num_walk=10, window=10):
+    if Node2Vec is None:
+        raise ImportError("node2vec is required for DeepWalk scores. Install it via `pip install node2vec`.")
     start_time = time.time()
     adj_train, train_edges, train_edges_false, val_edges, val_edges_false, \
         test_edges, test_edges_false = train_test_split
