@@ -2,6 +2,7 @@
 import torch
 import numpy as np
 import scipy.sparse as sp
+from scipy.sparse.linalg import spsolve
 import networkx as nx
 import pickle as pkl
 import random as rd
@@ -105,3 +106,46 @@ def accuracy(output, labels):
     correct = preds.eq(labels).double()
     correct = correct.sum()
     return correct / len(labels)
+
+def process_closed_form_graph_diff(adj, diff_n, diff_alpha):
+    """Compute I + S + ... + S^n using closed-form geometric series."""
+    if diff_n < 0:
+        raise ValueError("diff_n must be non-negative")
+
+    adj = sp.coo_matrix(adj)
+    adj_ = propagation_prob(adj, diff_alpha)
+    rowsum = np.array(adj_.sum(1))
+    degree_mat_inv_sqrt = sp.diags(np.power(rowsum, -0.5).flatten())
+    adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocsr()
+
+    identity = sp.eye(adj_normalized.shape[0], format='csr')
+    if diff_n == 0:
+        return sparse_to_torch_sparse_tensor(identity)
+
+    geom_numerator = identity - (adj_normalized ** (diff_n + 1))
+    geom_denominator = identity - adj_normalized
+    rhs = geom_numerator.todense()
+    closed_form_dense = spsolve(geom_denominator.tocsc(), rhs)
+    closed_form_sparse = sp.csr_matrix(closed_form_dense)
+    return sparse_to_torch_sparse_tensor(closed_form_sparse.tocoo())
+
+def process_sumpow_graph_diff(adj, diff_n, diff_alpha):
+    """Compute I + S + ... + S^n with explicit iterative accumulation."""
+    if diff_n < 0:
+        raise ValueError("diff_n must be non-negative")
+
+    adj = sp.coo_matrix(adj)
+    adj_ = propagation_prob(adj, diff_alpha)
+    rowsum = np.array(adj_.sum(1))
+    degree_mat_inv_sqrt = sp.diags(np.power(rowsum, -0.5).flatten())
+    adj_normalized = adj_.dot(degree_mat_inv_sqrt).transpose().dot(degree_mat_inv_sqrt).tocsr()
+
+    identity = sp.eye(adj_normalized.shape[0], format='csr')
+    cumulative = identity.copy()
+    current_power = identity.copy()
+
+    for _ in range(1, diff_n + 1):
+        current_power = current_power.dot(adj_normalized)
+        cumulative = cumulative + current_power
+
+    return sparse_to_torch_sparse_tensor(cumulative.tocoo())

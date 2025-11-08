@@ -1,0 +1,52 @@
+{
+  "datasets": {
+    "cora": {
+      "preprocess_graph_diff": {
+        "0.5000": {
+          "1": 0.006262875162065029
+        }
+      },
+      "process_closed_form_graph_diff": {
+        "0.5000": {
+          "1": 0.8766618752852082
+        }
+      },
+      "process_sumpow_graph_diff": {
+        "0.5000": {
+          "1": 0.0025474578142166138
+        }
+      }
+    },
+    "citeseer": {
+      "preprocess_graph_diff": {
+        "0.5000": {
+          "1": 0.00228304136544466
+        }
+      },
+      "process_closed_form_graph_diff": {
+        "0.5000": {
+          "1": 1.3813107502646744
+        }
+      },
+      "process_sumpow_graph_diff": {
+        "0.5000": {
+          "1": 0.002603583037853241
+        }
+      }
+    }
+  },
+  "metadata": {
+    "hops": [
+      1
+    ],
+    "diff_alphas": [
+      0.5
+    ],
+    "created_utc": "20251108_061137",
+    "data_dir": "/Users/jc/Desktop/main/adjustable_single_term_graph_diffusion_learning/simplified_graph_diffusion/data",
+    "datasets": [
+      "cora",
+      "citeseer"
+    ]
+  }
+}
