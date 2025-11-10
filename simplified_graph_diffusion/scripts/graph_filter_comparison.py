@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import os
 import sys
@@ -15,6 +14,8 @@ import matplotlib
 
 matplotlib.use("Agg")  # headless environments
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
+import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -24,7 +25,7 @@ from gcn.utils import (  # type: ignore
     load_data,
     preprocess_graph_diff,
     process_closed_form_graph_diff,
-    process_sumpow_graph_diff,
+    # process_sumpow_graph_diff,
 )
 
 
@@ -33,7 +34,28 @@ CLOSED_FORM_NODE_LIMIT = 100000
 FILTERS = {
     "preprocess_graph_diff": preprocess_graph_diff,
     "process_closed_form_graph_diff": process_closed_form_graph_diff,
-    "process_sumpow_graph_diff": process_sumpow_graph_diff,
+    # "process_sumpow_graph_diff": process_sumpow_graph_diff,
+}
+
+
+# -------------------------------
+# Experiment configuration
+# -------------------------------
+
+DATASETS: List[str] = [
+    "cora",
+    "citeseer",
+    "pubmed",
+    "arx"
+]
+HOPS: List[int] = [1, 2, 3, 4, 5]
+DIFF_ALPHAS: List[float] = [0.5]
+RUNS_PER_SETTING: int = 10
+DATA_DIR: Path = PROJECT_ROOT / "data"
+OUTPUT_DIR: Path = PROJECT_ROOT / "results" / "graph_filter_comparison"
+Y_AXIS_TICKS: Dict[str, float] = {
+    "pubmed": 50.0,
+    "arx": 1.0,
 }
 
 
@@ -60,12 +82,12 @@ def run_experiment(
         dataset_results: Dict[str, Dict[str, Dict[str, Optional[float]]]] = {}
 
         for filter_name, filter_fn in FILTERS.items():
-            filter_results: Dict[str, Dict[str, Optional[float]]] = {}
+            filter_results: Dict[str, Dict[str, Optional[List[float]]]] = {}
             skip_filter = (
                 filter_name == "process_closed_form_graph_diff" and num_nodes > CLOSED_FORM_NODE_LIMIT
             )
             for alpha in diff_alphas:
-                hop_times: Dict[str, Optional[float]] = {}
+                hop_times: Dict[str, Optional[List[float]]] = {}
                 if skip_filter:
                     print(
                         f"Dataset={dataset:10s} Filter={filter_name:30s} alpha={alpha:.2f} skipped (>{CLOSED_FORM_NODE_LIMIT} nodes)"
@@ -74,11 +96,15 @@ def run_experiment(
                     filter_results[f"{alpha:.4f}"] = hop_times
                     continue
                 for hop in hops:
-                    runtime = measure_runtime(filter_fn, adj, hop, alpha)
-                    hop_times[str(hop)] = runtime
-                    print(
-                        f"Dataset={dataset:10s} Filter={filter_name:30s} alpha={alpha:.2f} hop={hop} time={runtime:.4f}s"
-                    )
+                    runtimes: List[float] = []
+                    for run_idx in range(RUNS_PER_SETTING):
+                        runtime = measure_runtime(filter_fn, adj, hop, alpha)
+                        runtimes.append(runtime)
+                        print(
+                            f"Dataset={dataset:10s} Filter={filter_name:30s} alpha={alpha:.2f} "
+                            f"hop={hop} run={run_idx + 1}/{RUNS_PER_SETTING} time={runtime:.4f}s"
+                        )
+                    hop_times[str(hop)] = runtimes
                 filter_results[f"{alpha:.4f}"] = hop_times
             dataset_results[filter_name] = filter_results
 
@@ -90,28 +116,42 @@ def run_experiment(
             alpha_key = f"{alpha:.4f}"
             for filter_name, alpha_results in dataset_results.items():
                 hop_times = alpha_results[alpha_key]
-                hop_vals = [
-                    hop_times[str(hop)] if hop_times[str(hop)] is not None else float("nan")
-                    for hop in hops
-                ]
-                ax.plot(hops, hop_vals, marker="o", label=filter_name)
-            ax.set_title(f"Filter Construction Time ({dataset}, alpha={alpha:.2f})")
+                hop_vals = []
+                for hop in hops:
+                    samples = hop_times[str(hop)]
+                    if not samples:
+                        hop_vals.append(float("nan"))
+                    else:
+                        hop_vals.append(float(np.mean(samples)))
+                style_kwargs = {"marker": "o"}
+                axis_label = filter_name
+                if filter_name == "process_closed_form_graph_diff":
+                    axis_label = "Closed-form Polynomial"
+                    style_kwargs["linestyle"] = (0, (6, 3))
+                elif filter_name == "preprocess_graph_diff":
+                    axis_label = "SimDiff graph filter"
+                ax.plot(hops, hop_vals, label=axis_label, **style_kwargs)
+            ax.set_title(f"Graph Filter Construction Time ({dataset}, alpha={alpha:.2f})")
             ax.set_xlabel("n-hop")
-            ax.set_ylabel("Seconds")
+            ax.set_ylabel("Elapsed time (sec)")
+            ax.set_xticks(hops)
+            tick_interval = Y_AXIS_TICKS.get(dataset, 0.1)
+            ax.yaxis.set_major_locator(MultipleLocator(tick_interval))
             ax.legend()
             ax.grid(True, linestyle="--", alpha=0.4)
             fig.tight_layout()
-            fig_path = output_dir / f"{dataset}_alpha{alpha:.2f}_graph_filter_timing.png"
+            fig_path = output_dir / f"{dataset}_alpha{alpha:.2f}_graph_filter_comparison_runs.png"
             fig.savefig(fig_path)
             plt.close(fig)
 
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    json_path = output_dir / f"graph_filter_comparison_{timestamp}.json"
+    json_path = output_dir / f"graph_filter_comparison_runs_{timestamp}.json"
     payload = {
         "datasets": results,
         "metadata": {
             "hops": hops,
             "diff_alphas": diff_alphas,
+            "runs_per_setting": RUNS_PER_SETTING,
             "created_utc": timestamp,
             "data_dir": str(data_dir),
             "datasets": datasets,
@@ -122,45 +162,6 @@ def run_experiment(
 
     print(f"Saved JSON results to {json_path}")
     return payload
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Compare runtimes of different graph diffusion filters"
-    )
-    parser.add_argument(
-        "--datasets",
-        nargs="*",
-        default=None,
-        help="Dataset names (space or comma separated). Use 'all' or omit to run every *.graph file.",
-    )
-    parser.add_argument(
-        "--alphas",
-        type=float,
-        nargs="+",
-        default=[0.1, 0.3, 0.5, 0.7, 0.9],
-        help="List of diffusion alpha values to evaluate",
-    )
-    parser.add_argument(
-        "--hops",
-        type=int,
-        nargs="+",
-        default=[1, 2, 3, 4, 5],
-        help="List of hop counts (n) to evaluate",
-    )
-    parser.add_argument(
-        "--data-dir",
-        type=Path,
-        default=PROJECT_ROOT / "data",
-        help="Path to directory containing *.graph files",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=PROJECT_ROOT / "results" / "graph_filter_comparison",
-        help="Directory to save JSON and figures",
-    )
-    return parser.parse_args()
 
 
 def resolve_datasets(dataset_args: Optional[List[str]], data_dir: Path) -> List[str]:
@@ -194,21 +195,18 @@ def resolve_datasets(dataset_args: Optional[List[str]], data_dir: Path) -> List[
 
 
 def main() -> None:
-    args = parse_args()
-    hops = sorted(set(args.hops))
-    diff_alphas = args.alphas
-
-    # Ensure relative paths inside gcn.utils (e.g., data/...) resolve correctly
     os.chdir(PROJECT_ROOT)
 
-    datasets = resolve_datasets(args.datasets, args.data_dir)
+    hops = sorted(set(HOPS))
+    diff_alphas = DIFF_ALPHAS
+    datasets = resolve_datasets(DATASETS, DATA_DIR)
 
     run_experiment(
         datasets=datasets,
         hops=hops,
         diff_alphas=diff_alphas,
-        data_dir=args.data_dir,
-        output_dir=args.output_dir,
+        data_dir=DATA_DIR,
+        output_dir=OUTPUT_DIR,
     )
 
 
