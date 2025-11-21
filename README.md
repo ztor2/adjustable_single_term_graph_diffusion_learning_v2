@@ -1,8 +1,9 @@
-# Adjustable Single-term Graph Diffusion Learning
+# Simplified and Adjustable Graph Diffusion Neural Networks
 <br>
 
 정보 전파 조절이 가능하며 단순화된(또는 단일항으로 표현된) 그래프 확산 신경망을 이용한 링크 예측 및 분류 성능 향상.<br>
-- 'Adjustable single-term graph diffusion learning'과 'Adjustable and simplified graph diffusion learning' 제목이 혼재될 수 있습니다.
+- 'Simplified and Adjustable Graph Diffusion Neural Networks
+'과 'Adjustable and simplified graph diffusion learning' 제목이 혼재될 수 있습니다.
 - 본 코드의 GAE, VGAE, GCN 파트는 다음 저장소의 코드를 바탕으로 구축되었습니다.<br>
 https://github.com/tkipf/gae<br>
 https://github.com/zfjsail/gae-pytorch<br>
@@ -13,7 +14,7 @@ https://github.com/ztor2/network_datasets
 <br>
 
 ### 연구 배경 및 목적
-- 이 저장소는 2021년 대한산업공학회 추계학술대회 구두발표 세션에서 발표될 예정이며, 추후 논문화 작업 예정인 '**조절 가능한 단순화 그래프 확산 학습 모델(Adjustable and simplified graph diffusion learning)**'의 실험 코드 및 데이터를 포함한다.
+- 이 저장소는 Kang, J. C., & Cho, N.-W. (2025). Simplified and Adjustable Graph Diffusion Neural Networks. Systems, 13(11), 1040. 논문의 코드를 포함한다.
 - 이 연구에서는 기존의 대표적인 그래프 신경망 모델인 그래프 합성곱 신경망 모델(graph convolutional networks, GCN; Kipf & Welling, 2017)과 그래프 확산 합성곱 모델(graph diffusion convolution, GDC; Klicpera et al., 2019)을 보완한 simplified graph diffusion model(SimDiff)을 제안한다. 
 - SimDiff는 GCN보다 풍부한 이웃 노드 정보를 이용하면서 GDC에 비해 효율적으로 이를 구현한다, 노드 간 거리에 따른 특성 반영 비율도 조절이 가능한 파라미터를 도입한다. 
 - 제안한 모델로 분류와 링크 예측을 수행해 성능을 확인한다.
