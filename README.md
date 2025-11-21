@@ -22,9 +22,9 @@ https://github.com/ztor2/network_datasets
 
 ### 코드 파일 설명
 #### 모델 수행 코드 파일
-- 모든 실험은 colab 환경에서 수행되었으므로, 로컬 환경에서 실행 시 코드 앞부분의 drive mount 및 경로 설정 파트를 생략해야 한다. 
-- 각 실험의 결과는 미리 생성한 json 파일에 추가되도록 설정되어 있다. 따라서 실험 전 결과가 저장될 json 파일을 생성해야 한다.
-- 모든 실험은 2021년 11월 기준 pytorch 1.9.0 버전, cuda는 10.2 또는 11.1 버전, scikit-learn은 0.24.2 버전에서 정상 작동하는 것을 확인함.
+- ipynb 파일의 경우 colab 환경이 기본 설정이므로, 로컬 환경에서 실행 시 코드 앞부분의 drive mount 및 경로 설정 파트를 생략해야 함. 
+- 일부 실험의 결과는 미리 생성한 json 파일에 추가되도록 설정되어 있으므로, 이 경우 실험 전 결과가 저장될 json 파일을 생성해야 함.
+- 
 
 <br>
 
@@ -33,13 +33,18 @@ https://github.com/ztor2/network_datasets
 - **vgae.ipynb:** VGAE를 이용한 링크 예측 실험 코드 파일.
 - **logreg_mlp.ipynb:**: 분류 실험의 baseline인 logistic regression과 multi-layer perceptron(MLP) 모델 코드 파일.
 - **gcn.ipynb:** GCN을 이용한 분류 실험 코드 파일.
+- **scripts/graph_filter_comparison.py:** 그래프 필터 구성 시간 비교 실험 실행 파일.
+- **scripts/n_hop_gnn_comparison.py:** k-layer GCN과 SimDiff 기반 GNN 비교 실험 실행 파일.
+- **scripts/run_gcn.py:** GCN 분류 실험 실행 파일.
+- **scripts/run_gae.py / run_vgae.py:** 링크 예측용 GAE/VGAE 모델 재현용 실행 파일.
+- **scripts/run_logreg.py / run_mlp.py:** 선형/MLP 기반 분류 베이스라인 실행 파일.
 <br>
 
 #### 모델 관련 폴더(vgae, gae, etc_emb, gcn) 내 코드 설명
 - **optimizer.py:** loss function 함수를 포함.
 - **layers.py:** 각 model을 구성하는 layer를 정의하는 함수 포함.
 - **model.py:** 모델을 구성하는 class를 포함.
-- **utils.py:** 데이터 로드, 전처리 등의 각종 보조 함수를 포함. SimDiff는 이 함수에서 인접 행렬을 전처리할 때 반영된다.
+- **utils.py:** 데이터 로드, 전처리 등의 각종 보조 함수를 포함. SimDiff는 이 함수에서 인접 행렬을 전처리할 때 반영.
 
 <br>
 
@@ -108,6 +113,15 @@ https://github.com/ztor2/network_datasets
 
 
 ### 개발 환경 설정 (uv 사용)
-- 프로젝트 루트에서 [uv](https://github.com/astral-sh/uv)를 설치한 뒤 `uv sync` 명령으로 필수 의존성을 설치한다.
-- DeepWalk 및 노트북 베이스라인까지 실행하려면 `uv sync --all-extras` 또는 필요한 추가 그룹(`baseline`, `notebook`)을 선택해 설치한다.
-- 준비가 끝나면 `uv run run-gae --help` 와 같이 정의된 스크립트를 통해 각 실험을 실행할 수 있다. 예) `uv run run-gcn --dataset cora --epochs 200` (또는 `uv run python -m simplified_graph_diffusion.scripts.run_gcn --dataset cora --epochs 200`).
+- 프로젝트 루트에서 [uv](https://github.com/astral-sh/uv)를 설치한 뒤 `uv sync` 명령으로 필수 의존성을 설치.
+- DeepWalk 및 노트북 베이스라인까지 실행하려면 `uv sync --all-extras` 또는 필요한 추가 그룹(`baseline`, `notebook`)을 선택해 설치.
+- 준비가 끝나면 `uv run run-gae --help` 와 같이 정의된 스크립트를 통해 각 실험을 실행할 수 있음. 
+  - 예) `uv run run-gcn --dataset cora --epochs 200` (또는 `uv run python -m simplified_graph_diffusion.scripts.run_gcn --dataset cora --epochs 200`).
+
+### 실험 실행
+1. `simplified_graph_diffusion/scripts/…` 경로 참고
+2. 각 파일 상단의 파라미터 블록 설정
+3. `uv run python <script_file_path>` 형식으로 실행
+
+- `graph_filter_comparison.py`: 그래프 필터 생성 시간을 n-hop, α, 필터 유형별로 반복 측정.
+- `n_hop_gnn_comparison.py`: k-layer GCN과 SimDiff(2-layer + S^k) 모델을 비교해 정확도·시간 및 효율 지표(ΔAcc/logΔTime)를 기록. 
